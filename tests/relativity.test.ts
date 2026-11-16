@@ -60,6 +60,30 @@ describe('special relativity', () => {
   });
 });
 
+describe('relativistic travel', () => {
+  // One g in light-years per year squared.
+  const g = (9.80665 * 3.15576e7 ** 2) / 9.4607304725808e15;
+  it('one g is about 1.03 ly/yr^2', () => { expect(g).toBeCloseTo(1.032, 2); });
+  it('flip-and-burn times at one g match the standard results', () => {
+    const proxima = R.flipAndBurn(g, 4.25, 1);
+    expect(proxima.shipTime).toBeGreaterThan(3.4); expect(proxima.shipTime).toBeLessThan(3.7);
+    expect(proxima.homeTime).toBeGreaterThan(5.7); expect(proxima.homeTime).toBeLessThan(6.1);
+    const centre = R.flipAndBurn(g, 26000, 1);
+    expect(centre.shipTime).toBeGreaterThan(19); expect(centre.shipTime).toBeLessThan(21);
+    const andromeda = R.flipAndBurn(g, 2.5e6, 1);
+    expect(andromeda.shipTime).toBeGreaterThan(27); expect(andromeda.shipTime).toBeLessThan(30);
+    expect(andromeda.homeTime / 2.5e6).toBeCloseTo(1, 4);
+  });
+  it('flip-and-burn agrees with two legs of hyperbolic motion', () => {
+    const a = 2.3, d = 7.7, c = 1.4;
+    const trip = R.flipAndBurn(a, d, c);
+    const leg = R.hyperbolicMotion(a, trip.shipTime / 2, c);
+    expect(2 * leg.x).toBeCloseTo(d, 9);
+    expect(2 * leg.t).toBeCloseTo(trip.homeTime, 9);
+    expect(leg.gamma).toBeCloseTo(trip.peakGamma, 9);
+  });
+});
+
 describe('colour', () => {
   it('blackbody colours order correctly', () => {
     const cool = blackbodyRGB(3000), sun = blackbodyRGB(6500), hot = blackbodyRGB(20000);

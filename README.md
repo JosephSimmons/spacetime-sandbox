@@ -15,8 +15,9 @@ whatever scale you are at.
 | 4 | Black hole | 10⁴–10⁷ m | Schwarzschild null geodesics traced per pixel; accretion disc with exact shifts; test-particle orbits |
 | 5 | Star | 10⁹ m | Main-sequence scaling relations; Lane–Emden polytrope interior; HR diagram |
 | 6 | Solar system | 10¹¹–10¹³ m | Sun and planets from J2000 elements, fourth-order symplectic N-body |
-| 7 | Galaxy | 10²¹ m | 26,000 test-particle stars in a bulge + disc + NFW halo potential; rotation curve |
-| 8 | Cosmos | 10²⁶ m | Friedmann models: age, fate, distances, expansion history |
+| 7 | Among the stars | 10¹⁷ m | Relativistic flight at 1 g through the solar neighbourhood; exact blackbody Doppler; blueshifted microwave background |
+| 8 | Galaxy | 10²¹ m | 26,000 test-particle stars in a bulge + disc + NFW halo potential; rotation curve |
+| 9 | Cosmos | 10²⁶ m | Friedmann models: age, fate, distances, expansion history |
 
 The dials at the top multiply c, G and ħ. Scroll, or drag the ruler, to move along the scale axis.
 

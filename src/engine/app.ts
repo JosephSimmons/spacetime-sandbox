@@ -47,6 +47,10 @@ export class App {
     this.buildConstDials();
     this.buildHelp();
     $('btnHelp').addEventListener('click', () => $('help').classList.toggle('hidden'));
+    // Show the help once, on a first visit.
+    try {
+      if (!localStorage.getItem('spacetime-sandbox.seen')) { $('help').classList.remove('hidden'); localStorage.setItem('spacetime-sandbox.seen', '1'); }
+    } catch { /* storage unavailable */ }
     window.addEventListener('resize', () => this.resize());
     this.resize();
   }
@@ -117,7 +121,7 @@ export class App {
 <tr><td><kbd>drag</kbd></td><td>Orbit the view (or look around, when flying)</td></tr>
 <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <kbd>Q</kbd><kbd>E</kbd></td><td>Thrust when flying: forward, left, back, right, down, up</td></tr>
 <tr><td><kbd>Space</kbd></td><td>Brake to rest (flying)</td></tr>
-<tr><td><kbd>1</kbd>–<kbd>8</kbd></td><td>Jump to a station, smallest to largest</td></tr>
+<tr><td><kbd>1</kbd>–<kbd>9</kbd></td><td>Jump to a station, smallest to largest</td></tr>
 <tr><td><kbd>P</kbd></td><td>Pause the simulation</td></tr>
 <tr><td><kbd>R</kbd></td><td>Reset the current station</td></tr>
 <tr><td><kbd>H</kbd></td><td>Show or hide this help</td></tr>

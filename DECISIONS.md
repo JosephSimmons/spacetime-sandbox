@@ -57,6 +57,20 @@ Calls made during the build, so they can be reviewed or overturned. Newest last.
 - **Molecular dynamics** is Lennard-Jones argon in reduced units with a
   2.5σ shifted cutoff.
 
+## Interstellar flight
+
+- The star field is drawn from a Salpeter-like mass function at 0.004 stars per
+  cubic light-year, the density near the Sun, and repeats every 177 light-years.
+  Positions are random; these are not catalogue stars.
+- Stars are blackbodies, so their shifted colour and visible brightness are
+  exact: a star at temperature T is seen at D·T, and its solid angle shrinks by
+  D², giving a visible flux ratio Y(DT) / (D² Y(T)).
+- The microwave background is drawn as a 2.7255 K blackbody at T·D in each
+  direction. Its brightness scale is chosen so it becomes visible at about
+  2,000 K, which is where a blackbody starts to glow to the eye.
+- The scale axis sets the time rate here: light crosses the field of view in
+  four seconds of play.
+
 ## Scale axis
 
 - **Stations whose size depends on the constants move along the axis.** The
@@ -71,7 +85,7 @@ Calls made during the build, so they can be reviewed or overturned. Newest last.
 
 ## Challenges
 
-- Fourteen optional goals read each station's `probe()` values. Progress is
+- Sixteen optional goals read each station's `probe()` values. Progress is
   kept in the browser's local storage and can be cleared from the panel.
 - The galaxy's "reference curve" target is reachable (best χ² about 0.01);
   without a halo the best possible within the dial ranges is about 16.

@@ -6,12 +6,14 @@ type Probe = Record<string, number>;
 export interface Challenge { id: string; station: string; title: string; text: string; done: (p: Probe) => boolean; }
 
 export const CHALLENGES: Challenge[] = [
-  { id: 'muon', station: 'lab', title: 'Outrun the clock', text: 'Slow light to 30 m/s, start a muon run, and deliver the particle before its lifetime runs out. At rest it could cover a third of the distance.', done: (p) => p.runArrived === 1 },
+  { id: 'muon', station: 'lab', title: 'Outrun the clock', text: 'Slow light to 30 m/s, start a muon run, and deliver the particle before its lifetime runs out. Without time dilation it could cover at most 40% of the distance.', done: (p) => p.runArrived === 1 },
   { id: 'twin', station: 'lab', title: 'The younger twin', text: 'Travel, then brake to rest, with the lattice clocks at least ten seconds ahead of your own.', done: (p) => p.t - p.tau >= 10 && p.beta < 0.01 },
   { id: 'photon-sphere', station: 'blackhole', title: 'Where light orbits', text: 'Hover within 2% of the photon sphere, at 3 GM/c². Look sideways with the celestial grid on.', done: (p) => Math.abs(p.r - 3) < 0.06 },
   { id: 'precession', station: 'blackhole', title: 'A rosette', text: 'Set up a test orbit whose periapsis advances by at least 90° every turn.', done: (p) => p.precessionDeg >= 90 },
   { id: 'second-earth', station: 'solar', title: 'A second Earth', text: 'Add a body that settles on a bound, near-circular orbit (e < 0.1) between 0.95 and 1.37 AU.', done: (p) => p.habitableAdded === 1 },
   { id: 'eject', station: 'solar', title: 'Lose a planet', text: 'Get at least one body thrown out of the system or into the Sun. Gravity, mass or a passing visitor will all do it.', done: (p) => p.ejected >= 1 },
+  { id: 'cmb', station: 'interstellar', title: 'See the afterglow', text: 'Fly fast enough that the cosmic microwave background ahead of you is blueshifted above 1,500 K and becomes visible.', done: (p) => p.cmbAhead >= 1500 },
+  { id: 'proxima', station: 'interstellar', title: 'Four years out', text: 'Get more than 4.25 light-years from home in under 3.6 years of ship time.', done: (p) => p.distance >= 4.25 && p.tau < 3.6 },
   { id: 'fit-curve', station: 'galaxy', title: 'Weigh the dark matter', text: 'Tune the halo, disc and bulge until the rotation curve matches the reference points with χ² below 0.15. Without a halo, the best possible is about 16.', done: (p) => p.misfit < 0.15 },
   { id: 'unbind', station: 'galaxy', title: 'What holds it together', text: 'Remove the dark matter and keep watching until at least 3% of the stars have drifted beyond 150 kpc.', done: (p) => p.halo === 0 && p.escapedFrac >= 0.03 },
   { id: 'tension', station: 'cosmos', title: 'The Hubble tension', text: 'Build a flat universe that is 13.8 billion years old (within 0.05) with H₀ between 72.5 and 73.5.', done: (p) => p.flat === 1 && Math.abs(p.age - 13.8) < 0.05 && p.H0 >= 72.5 && p.H0 <= 73.5 },

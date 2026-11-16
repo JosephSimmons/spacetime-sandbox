@@ -155,7 +155,7 @@ export class LabStation extends Station {
     this.thrustDial = left.dial({ label: 'Manual thrust', min: 0.01, max: 1e9, value: 1, log: true, fmt: (v) => `${num(v, 3)} g`, onChange: (v) => (this.thrustG = v) });
     left.buttons(button('Brake to rest', () => (this.w = [0, 0, 0])), button('Reset', () => this.reset(ctx)));
     left.section('Timed run');
-    left.blurb('Carry a particle with a fixed proper lifetime to a ring 60 cells away. Light itself would need three lifetimes to get there.');
+    left.blurb('Carry a particle with a fixed proper lifetime to a ring 60 cells away. Light itself would need two and a half lifetimes to get there.');
     left.buttons(button('Start muon run', () => this.startRun(ctx)));
     this.runRo = left.readouts(['Lifetime left', 'Distance left', 'Result']);
 
@@ -169,7 +169,7 @@ export class LabStation extends Station {
   startRun(ctx: Ctx) {
     const cg = this.cGrid(ctx);
     this.pos = [Math.floor(this.pos[0] / 20) * 20, 3, 0]; this.w = [0, 0, 0]; this.yaw = -Math.PI / 2; this.pitch = 0;
-    this.run = { active: true, startX: this.pos[0], distance: 60, lifetime: 20 / cg, tau0: this.tau, result: '' };
+    this.run = { active: true, startX: this.pos[0], distance: 60, lifetime: 24 / cg, tau0: this.tau, result: '' };
     this.marker.position.set(this.pos[0] + 60, 4.5, 0); this.marker.visible = true;
     ctx.toast('Run started: reach the ring before the lifetime runs out');
   }

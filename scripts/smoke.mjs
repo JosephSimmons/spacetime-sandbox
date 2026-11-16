@@ -6,6 +6,7 @@ const require = createRequire(import.meta.url);
 let chromium;
 try { ({ chromium } = require('playwright')); } catch { ({ chromium } = require('/opt/npm-tools/node_modules/playwright')); }
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// The help overlay opens on a first visit; it does not block the checks.
 const browser = await chromium.launch({
   executablePath: process.env.CHROME || '/usr/bin/google-chrome',
   args: ['--disable-background-networking', '--disable-sync', '--no-first-run', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'],

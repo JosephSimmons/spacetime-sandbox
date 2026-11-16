@@ -83,6 +83,7 @@ uniform vec3 uObs; uniform vec3 uPeriod;
 ${ABERRATION_GLSL}
 vec3 wrapRel(vec3 d){
   if (uPeriod.x > 0.0) d.x = mod(d.x + 0.5 * uPeriod.x, uPeriod.x) - 0.5 * uPeriod.x;
+  if (uPeriod.y > 0.0) d.y = mod(d.y + 0.5 * uPeriod.y, uPeriod.y) - 0.5 * uPeriod.y;
   if (uPeriod.z > 0.0) d.z = mod(d.z + 0.5 * uPeriod.z, uPeriod.z) - 0.5 * uPeriod.z;
   return d;
 }
@@ -220,14 +221,14 @@ vec4 blackbody(float T){
  * it is a blackbody at D*T; its solid angle shrinks by D^2, which gives the
  * exact visible flux ratio Y(DT) / (D^2 Y(T)).
  */
-export function relStarMaterial(u: RelUniforms, opts: { atInfinity?: boolean; sizeScale?: number } = {}): THREE.ShaderMaterial {
+export function relStarMaterial(u: RelUniforms, opts: { atInfinity?: boolean; sizeScale?: number; far?: number } = {}): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
-    uniforms: { ...u, uBB: { value: blackbodyTexture() }, uSizeScale: { value: opts.sizeScale ?? 1 }, uPixelRatio: { value: 1 } },
+    uniforms: { ...u, uBB: { value: blackbodyTexture() }, uSizeScale: { value: opts.sizeScale ?? 1 }, uPixelRatio: { value: 1 }, uFar: { value: opts.far ?? 900 } },
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     vertexShader: /* glsl */ `
 ${VERT_COMMON}
 ${BLACKBODY_GLSL}
-uniform float uDoppler; uniform float uBeam; uniform float uSizeScale; uniform float uPixelRatio;
+uniform float uDoppler; uniform float uBeam; uniform float uSizeScale; uniform float uPixelRatio; uniform float uFar;
 attribute float aTemp; attribute float aFlux;
 varying vec3 vCol; varying float vAlpha;
 void main(){
@@ -246,7 +247,7 @@ void main(){
   vAlpha = clamp(mag * 3.0, 0.0, 1.0) * clamp(mag / 0.02, 0.0, 1.0);
   gl_PointSize = size * uSizeScale * uPixelRatio;
   vec3 ra = apparent(r);
-  ${opts.atInfinity ? 'ra = normalize(ra) * 900.0;' : ''}
+  ${opts.atInfinity ? 'ra = normalize(ra) * uFar;' : ''}
   gl_Position = projectionMatrix * viewMatrix * vec4(uObs + ra, 1.0);
 }`,
     fragmentShader: /* glsl */ `

@@ -77,3 +77,17 @@ export function hyperbolicMotion(a: number, tau: number, c: number) {
     gamma: Math.cosh(k),
   };
 }
+
+/**
+ * Flip-and-burn trip: accelerate at proper acceleration a to the midpoint of a
+ * distance d, then decelerate to arrive at rest. Returns elapsed ship time,
+ * elapsed home-frame time and the peak Lorentz factor. Units follow a, d and c.
+ */
+export function flipAndBurn(a: number, d: number, c: number) {
+  const k = (a * d) / (2 * c * c);
+  return {
+    shipTime: ((2 * c) / a) * Math.acosh(1 + k),
+    homeTime: ((2 * c) / a) * Math.sqrt(k * (k + 2)),
+    peakGamma: 1 + k,
+  };
+}
