@@ -88,3 +88,49 @@ export function curveMisfit(p: GalaxyParams): number {
   for (const [R, v] of REFERENCE_CURVE) s += ((circularSpeed(R, p).total - v) / 10) ** 2;
   return s / REFERENCE_CURVE.length;
 }
+
+/**
+ * Acceleration function with the halo constants precomputed, for hot loops.
+ * Returns the same values as `acceleration`.
+ */
+export function makeAccelerator(p: GalaxyParams): (x: number, y: number, z: number, out: Float64Array | number[], o: number) => void {
+  const hasHalo = p.haloMass > 0;
+  const rs = hasHalo ? haloRadii(p).rs : 1;
+  const norm = hasHalo ? p.haloMass / nfwM(p.haloConc) : 0;
+  const { G, bulgeMass, bulgeScale, discMass, discA, discB } = p;
+  const b2 = discB * discB;
+  return (x, y, z, out, o) => {
+    const R2 = x * x + y * y;
+    const r = Math.sqrt(R2 + z * z) + 1e-9;
+    const rb = r + bulgeScale;
+    let m = (bulgeMass * r * r) / (rb * rb);
+    if (hasHalo) { const xx = r / rs; m += norm * (Math.log(1 + xx) - xx / (1 + xx)); }
+    const sph = (-G * m) / (r * r * r);
+    const zb = Math.sqrt(z * z + b2);
+    const az = discA + zb;
+    const q = R2 + az * az;
+    const den = q * Math.sqrt(q);
+    const dR = (-G * discMass) / den;
+    out[o] = x * (sph + dR);
+    out[o + 1] = y * (sph + dR);
+    out[o + 2] = z * (sph + (dR * az) / zb);
+  };
+}
+
+/** Escape speed from radius r in the plane (km/s), integrating the spherical part numerically. */
+export function escapeSpeed(R: number, p: GalaxyParams): number {
+  // Potential difference to infinity along the plane: integral of a_R dR.
+  const acc = makeAccelerator(p), out = [0, 0, 0];
+  let phi = 0;
+  let r = R;
+  for (let i = 0; i < 400; i++) {
+    const r2 = r * 1.03, mid = 0.5 * (r + r2);
+    acc(mid, 0, 0, out, 0);
+    phi += -out[0] * (r2 - r);
+    r = r2;
+  }
+  // Beyond the last radius treat the remainder as Keplerian.
+  acc(r, 0, 0, out, 0);
+  phi += -out[0] * r;
+  return Math.sqrt(2 * phi);
+}

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as R from '../src/physics/relativity';
 import { v3, Vec3 } from '../src/physics/constants';
-import { blackbodyRGB, dopplerShiftRGB } from '../src/physics/color';
+import { blackbodyRGB, dopplerShiftRGB, dopplerShiftSurface, continuumRGB } from '../src/physics/color';
 
 describe('special relativity', () => {
   it('gamma and rapidity', () => {
@@ -75,5 +75,18 @@ describe('colour', () => {
     expect(blue[2] + blue[1]).toBeGreaterThan(blue[0]);
     const gone = dopplerShiftRGB([0, 0, 1], 2.5);
     expect(gone[0] + gone[1] + gone[2]).toBeLessThan(0.02);
+  });
+  it('surface model is the identity at D = 1 and brings infrared into view when blueshifted', () => {
+    expect(continuumRGB(1)).toEqual([0, 0, 0]);
+    const c: [number, number, number] = [0.5, 0.4, 0.3];
+    const same = dopplerShiftSurface(c, 1);
+    for (let i = 0; i < 3; i++) expect(same[i]).toBeCloseTo(c[i], 10);
+    // Mild blueshift: infrared arrives in red first.
+    const mild = continuumRGB(1.15);
+    expect(mild[0]).toBeGreaterThan(mild[2]);
+    // Strong blueshift: the whole visible band is filled by former infrared.
+    expect(continuumRGB(4)).toEqual([1, 1, 1]);
+    // Strong redshift: former ultraviolet, dimmer.
+    for (const v of continuumRGB(0.3)) expect(v).toBeCloseTo(0.35, 10);
   });
 });

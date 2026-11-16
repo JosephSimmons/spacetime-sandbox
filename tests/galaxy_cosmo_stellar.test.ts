@@ -30,6 +30,16 @@ describe('galaxy dynamics', () => {
       expect(-out[0] * R).toBeCloseTo(Gx.circularSpeed(R, Gx.MILKY_WAY).total ** 2, 4);
     }
   });
+  it('fast accelerator matches the reference implementation', () => {
+    const acc = Gx.makeAccelerator(Gx.MILKY_WAY), a = [0, 0, 0], b = [0, 0, 0];
+    for (const [x, y, z] of [[1, 2, 0.3], [-8, 0.5, -1], [0.1, 0.05, 0.02], [30, -40, 5]]) {
+      Gx.acceleration(x, y, z, Gx.MILKY_WAY, a); acc(x, y, z, b, 0);
+      for (let k = 0; k < 3; k++) expect(b[k] / a[k]).toBeCloseTo(1, 10);
+    }
+    // Escape speed exceeds sqrt(2) times circular speed inside an extended halo.
+    expect(Gx.escapeSpeed(8.2, Gx.MILKY_WAY)).toBeGreaterThan(Math.SQRT2 * Gx.circularSpeed(8.2, Gx.MILKY_WAY).total);
+    expect(Gx.escapeSpeed(8.2, Gx.MILKY_WAY)).toBeLessThan(800);
+  });
   it('epicyclic frequency is sqrt(2) Omega for a flat curve and Omega for Kepler', () => {
     const kep = { ...Gx.MILKY_WAY, haloMass: 0, discMass: 0, bulgeMass: 5, bulgeScale: 1e-6 };
     const R = 10, om = Gx.circularSpeed(R, kep).total / R;

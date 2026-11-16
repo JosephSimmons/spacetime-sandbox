@@ -104,6 +104,26 @@ export function dopplerShiftRGB(rgb: [number, number, number], D: number): [numb
   return [Math.max(out[0], 0), Math.max(out[1], 0), Math.max(out[2], 0)];
 }
 
+const smooth = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+/**
+ * Out-of-band light that a shift brings into view. Surfaces are taken to
+ * reflect infrared as strongly as their visible luminance and ultraviolet at
+ * 35% of it; the band edges sweep through red, green and blue in turn.
+ */
+export function continuumRGB(D: number): [number, number, number] {
+  const e = 700 / D, f = 400 / D;
+  const edges: [number, number][] = [[570, 680], [490, 600], [410, 500]];
+  return edges.map(([a, b]) => 1 - smooth(a, b, e) + 0.35 * smooth(a, b, f)) as [number, number, number];
+}
+
+/** Doppler-shifted colour of a lit surface: shifted bands plus out-of-band continuum. */
+export function dopplerShiftSurface(rgb: [number, number, number], D: number): [number, number, number] {
+  const s = dopplerShiftRGB(rgb, D), c = continuumRGB(D);
+  const lum = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+  return [s[0] + lum * c[0], s[1] + lum * c[1], s[2] + lum * c[2]];
+}
+
 /** Inverse of the band matrix, column-major, for the GLSL implementation. */
 export function bandInverseMatrix(): number[] {
   const M = BAND_NM.map((l) => xyzToLinearRGB(...cmf(l)));
