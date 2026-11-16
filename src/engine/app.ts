@@ -23,6 +23,7 @@ export class App {
   private constEls: Record<keyof Consts, { root: HTMLElement; input: HTMLInputElement; out: HTMLElement }> = {} as any;
   private corridorReadouts: ReturnType<Panel['readouts']> | null = null;
   private fadeTimer = 0;
+  private activeCentre = 0;
   frameHooks: ((dt: number) => void)[] = [];
   refreshHooks: (() => void)[] = [];
   errors: string[] = [];
@@ -109,13 +110,14 @@ export class App {
 <h2>How it works</h2>
 <p class="blurb">One axis runs through everything: scale. Scroll, or drag the ruler at the bottom, to move from the hydrogen atom to the cosmic web. Where the ruler shows a band there is a station with a working simulation. Between stations you pass landmark sizes.</p>
 <p class="blurb">The three dials at the top multiply the constants of nature. Each station reacts to the ones that matter to it; the others are greyed out.</p>
+<p class="blurb">A good first minute: in the relativity lab, press the <b>30 m/s</b> preset, hold <kbd>W</kbd>, and watch the view ahead.</p>
 <h3>Controls</h3>
 <table>
 <tr><td><kbd>scroll</kbd></td><td>Move along the scale axis</td></tr>
 <tr><td><kbd>drag</kbd></td><td>Orbit the view (or look around, when flying)</td></tr>
 <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <kbd>Q</kbd><kbd>E</kbd></td><td>Thrust when flying: forward, left, back, right, down, up</td></tr>
 <tr><td><kbd>Space</kbd></td><td>Brake to rest (flying)</td></tr>
-<tr><td><kbd>1</kbd>–<kbd>9</kbd></td><td>Jump to a station</td></tr>
+<tr><td><kbd>1</kbd>–<kbd>8</kbd></td><td>Jump to a station, smallest to largest</td></tr>
 <tr><td><kbd>P</kbd></td><td>Pause the simulation</td></tr>
 <tr><td><kbd>R</kbd></td><td>Reset the current station</td></tr>
 <tr><td><kbd>H</kbd></td><td>Show or hide this help</td></tr>
@@ -163,6 +165,7 @@ export class App {
     this.left.clear(); this.right.clear();
     this.corridorReadouts = null;
     if (st) {
+      this.activeCentre = st.centre(this.ctx.consts);
       if (!st.built) { st.build(this.ctx); st.built = true; }
       st.panels(this.left, this.right, this.ctx);
       st.enter(this.ctx);
@@ -198,6 +201,11 @@ export class App {
     if (input.hit('r') && this.active) { this.active.reset(ctx); this.toast('Station reset'); }
     for (let i = 0; i < Math.min(9, this.stations.length); i++) if (input.hit(String(i + 1))) this.jump(this.stations[i].id);
 
+    // If the constants moved the active station along the axis, move with it.
+    if (this.active) {
+      const c = this.active.centre(ctx.consts);
+      if (c !== this.activeCentre) { ctx.setLogScale(ctx.logScale + c - this.activeCentre); this.activeCentre = c; }
+    }
     this.switchTo(this.pick());
 
     const r = ctx.renderer;

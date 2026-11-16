@@ -124,6 +124,7 @@ export class BlackHoleStation extends Station {
   private orbitDirty = true;
   private orbit: ReturnType<typeof S.massiveOrbit> | null = null;
   rCam = 24;
+  private look = 0;
 
   /** GM/c^2 in metres for the current mass and constants. */
   private rg(c: Consts) { return (SI.G * c.G * this.massSun * SI.Msun) / (SI.c * c.c) ** 2; }
@@ -150,7 +151,7 @@ export class BlackHoleStation extends Station {
     const u = this.mat.uniforms;
     left.title(this.name).blurb(this.blurb);
     left.section('The hole');
-    left.dial({ label: 'Mass', min: 3, max: 100, value: this.massSun, log: true, fmt: (v) => `${num(v, 3)} M☉`, onChange: (v) => { const k = ctx.logScale - this.centre(ctx.consts); this.massSun = v; ctx.setLogScale(this.centre(ctx.consts) + k); } });
+    left.dial({ label: 'Mass', min: 3, max: 100, value: this.massSun, log: true, fmt: (v) => `${num(v, 3)} M☉`, onChange: (v) => (this.massSun = v) });
     left.note('The horizon radius is 2GM/c², so the G and c dials move this whole station along the scale axis. Slow light enough and a ten-solar-mass hole is the size of a galaxy.');
     left.section('Accretion disc');
     left.toggle('Show disc', true, (v) => (u.uDisk.value = v ? 1 : 0));
@@ -158,6 +159,9 @@ export class BlackHoleStation extends Station {
     left.dial({ label: 'Outer edge', min: 10, max: 60, value: 22, step: 0.5, fmt: (v) => `${fixed(v, 1)} GM/c²`, onChange: (v) => (u.uRout.value = v) });
     left.dial({ label: 'Peak temperature', min: 2000, max: 40000, value: 7500, log: true, fmt: (v) => `${num(v, 3)} K`, onChange: (v) => (u.uTpeak.value = v) });
     left.note('Real discs around stellar-mass holes peak in X-rays. The dial picks a temperature the eye can see; the shifts applied to it are exact.');
+    left.section('Observer');
+    left.dial({ label: 'Look angle', min: 0, max: 180, value: 0, step: 1, fmt: (v) => (v === 0 ? 'at the hole' : v === 180 ? 'directly away' : `${v}° from the hole`), onChange: (v) => (this.look = v) });
+    left.note('Close in, the shadow fills the view. Turn to look away and the whole outside universe is squeezed into a shrinking, blueshifted disc.');
     left.section('What to render');
     left.toggle('Doppler and gravitational shifts', true, (v) => (u.uShift.value = v ? 1 : 0));
     left.toggle('Celestial grid (15° lines on the sky)', false, (v) => (u.uGridOn.value = v ? 1 : 0));
@@ -178,6 +182,10 @@ export class BlackHoleStation extends Station {
     this.orbitDirty = true;
   }
 
+  // The ray marcher is the heaviest shader here, so it runs at one sample per CSS pixel.
+  enter(ctx: Ctx) { ctx.renderer.setPixelRatio(1); window.dispatchEvent(new Event('resize')); }
+  leave(ctx: Ctx) { ctx.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); window.dispatchEvent(new Event('resize')); }
+
   update(dt: number, ctx: Ctx) {
     const u = this.mat.uniforms;
     this.rig.drag(ctx.input);
@@ -187,9 +195,13 @@ export class BlackHoleStation extends Station {
     if (!ctx.paused) this.time += dt;
     const e = this.camera.matrixWorld.elements;
     u.uCam.value.copy(this.camera.position);
-    u.uRight.value.set(e[0], e[1], e[2]); u.uUp.value.set(e[4], e[5], e[6]); u.uFwd.value.set(-e[8], -e[9], -e[10]);
+    // Tilt the view about the camera's right axis by the look angle.
+    const la = (this.look * Math.PI) / 180, cl = Math.cos(la), sl = Math.sin(la);
+    u.uRight.value.set(e[0], e[1], e[2]);
+    u.uUp.value.set(e[4] * cl + e[8] * sl, e[5] * cl + e[9] * sl, e[6] * cl + e[10] * sl);
+    u.uFwd.value.set(-e[8] * cl + e[4] * sl, -e[9] * cl + e[5] * sl, -e[10] * cl + e[6] * sl);
     // Widen the field of view close in, where the shadow covers most of the sky.
-    const fov = this.rCam < 6 ? 55 + (6 - this.rCam) * 12 : 55;
+    const fov = this.rCam < 6 ? 55 + (6 - this.rCam) * 14 : 55;
     u.uTanFov.value = Math.tan((fov * Math.PI) / 360);
     u.uAspect.value = ctx.view.w / ctx.view.h;
     u.uTime.value = this.time;

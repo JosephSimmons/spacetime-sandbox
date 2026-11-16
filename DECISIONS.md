@@ -27,6 +27,15 @@ Calls made during the build, so they can be reviewed or overturned. Newest last.
   functions. Real surfaces have broad spectra, so this is a model of the effect,
   not a spectral renderer. Blackbody sources (stars, the accretion disc) are
   exact: a Doppler-shifted blackbody is a blackbody at temperature D·T.
+- **Out-of-band light.** A pure three-band model goes black once the bands
+  shift out of the visible, which real scenes do not: infrared shifts in to
+  replace them. Surfaces are therefore given an infrared reflectance equal to
+  their visible luminance and an ultraviolet one at 35% of it. The "sodium-lamp
+  world" toggle removes all of this and lights the scene with a single 589 nm
+  line, where the colour shift is exact.
+- **Auto exposure** in the lab scales exposure by the Doppler factor in the
+  direction you are looking, as an adapting eye or camera would. Turn it off to
+  see the raw D⁴ beaming.
 - **Beaming** scales bolometric intensity as D⁴.
 - **The player's proper time drives the simulation.** World time advances by
   γ dτ, so time dilation is something you experience, not just a readout.
@@ -47,3 +56,22 @@ Calls made during the build, so they can be reviewed or overturned. Newest last.
   approximation; the panel warns when it does.
 - **Molecular dynamics** is Lennard-Jones argon in reduced units with a
   2.5σ shifted cutoff.
+
+## Scale axis
+
+- **Stations whose size depends on the constants move along the axis.** The
+  hydrogen atom and the argon box scale as ħ² (the Bohr radius); the black hole
+  scales as GM/c². When a dial moves the station you are in, the view moves
+  with it. Bands can overlap as a result; the station you are in keeps priority
+  until you leave its band.
+- **Argon under a changed ħ** only changes size here. Its binding energy and
+  therefore its melting point would change too; that is not modelled.
+- **In the relativity lab the scale axis sets the grid spacing**, so the same
+  speed of light covers fewer cells per second on a larger grid.
+
+## Challenges
+
+- Fourteen optional goals read each station's `probe()` values. Progress is
+  kept in the browser's local storage and can be cleared from the panel.
+- The galaxy's "reference curve" target is reachable (best χ² about 0.01);
+  without a halo the best possible within the dial ranges is about 16.
