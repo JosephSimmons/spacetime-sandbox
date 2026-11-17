@@ -16,6 +16,8 @@ export const CHALLENGES: Challenge[] = [
   { id: 'proxima', station: 'interstellar', title: 'Four years out', text: 'Get more than 4.25 light-years from home in under 3.6 years of ship time.', done: (p) => p.distance >= 4.25 && p.tau < 3.6 },
   { id: 'fit-curve', station: 'galaxy', title: 'Weigh the dark matter', text: 'Tune the halo, disc and bulge until the rotation curve matches the reference points with χ² below 0.15. Without a halo, the best possible is about 16.', done: (p) => p.misfit < 0.15 },
   { id: 'unbind', station: 'galaxy', title: 'What holds it together', text: 'Remove the dark matter and keep watching until at least 3% of the stars have drifted beyond 150 kpc.', done: (p) => p.halo === 0 && p.escapedFrac >= 0.03 },
+  { id: 'cross', station: 'lens', title: 'Einstein cross', text: 'Place the source so that the lens makes four bright images of it.', done: (p) => p.images === 4 },
+  { id: 'ring', station: 'lens', title: 'Einstein ring', text: 'Make the lens round and line the source up behind it until its image closes into a ring.', done: (p) => p.ring === 1 },
   { id: 'tension', station: 'cosmos', title: 'The Hubble tension', text: 'Build a flat universe that is 13.8 billion years old (within 0.05) with H₀ between 72.5 and 73.5.', done: (p) => p.flat === 1 && Math.abs(p.age - 13.8) < 0.05 && p.H0 >= 72.5 && p.H0 <= 73.5 },
   { id: 'crunch', station: 'cosmos', title: 'Big Crunch', text: 'Make a universe that stops expanding and falls back in on itself.', done: (p) => p.recollapses === 1 },
   { id: 'o-star', station: 'star', title: 'Live fast', text: 'Make an O-type star, hotter than 30,000 K, and read off how long it lasts.', done: (p) => p.T >= 30000 },

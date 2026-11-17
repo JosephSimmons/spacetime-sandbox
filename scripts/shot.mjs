@@ -21,6 +21,7 @@ page.on('console', (m) => { if (['error', 'warning'].includes(m.type())) logs.pu
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
 await page.goto('file://' + path.join(root, 'dist/index.html'));
 await page.waitForTimeout(800);
+await page.keyboard.press('Escape'); // dismiss the first-visit help
 if (code) { try { await page.evaluate(code); } catch (e) { logs.push(`[eval] ${e.message}`); } }
 await page.waitForTimeout(+wait);
 const errs = await page.evaluate(() => (window.__app ? window.__app.errors : ['no app']));

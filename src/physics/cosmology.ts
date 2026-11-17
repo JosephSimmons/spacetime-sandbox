@@ -131,3 +131,15 @@ export function redshiftAtDistance(d: number, p: CosmoParams, zMax = 1100): numb
   }
   return 0.5 * (lo + hi);
 }
+
+/**
+ * Angular diameter distance between redshifts z1 < z2 (Mpc), as needed for
+ * gravitational lensing. Uses the standard expression, valid for Omega_k >= 0
+ * and an excellent approximation for small negative curvature.
+ */
+export function angularDistanceBetween(z1: number, z2: number, p: CosmoParams): number {
+  const dh = hubbleDistanceMpc(p.H0), ok = omegaK(p);
+  const m1 = transverseDistance(z1, p), m2 = transverseDistance(z2, p);
+  const dm = m2 * Math.sqrt(1 + (ok * m1 * m1) / (dh * dh)) - m1 * Math.sqrt(1 + (ok * m2 * m2) / (dh * dh));
+  return dm / (1 + z2);
+}

@@ -17,6 +17,7 @@ page.on('console', (m) => { if (m.type() === 'error') logs.push(`[console] ${m.t
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
 await page.goto('file://' + path.join(root, 'dist/index.html'));
 await page.waitForTimeout(600);
+await page.keyboard.press('Escape'); // dismiss the first-visit help
 const ids = await page.evaluate(() => window.__app.stations.map((s) => s.id));
 for (const id of ids) {
   await page.evaluate((i) => window.__app.jump(i), id);

@@ -17,7 +17,8 @@ whatever scale you are at.
 | 6 | Solar system | 10¹¹–10¹³ m | Sun and planets from J2000 elements, fourth-order symplectic N-body |
 | 7 | Among the stars | 10¹⁷ m | Relativistic flight at 1 g through the solar neighbourhood; exact blackbody Doppler; blueshifted microwave background |
 | 8 | Galaxy | 10²¹ m | 26,000 test-particle stars in a bulge + disc + NFW halo potential; rotation curve |
-| 9 | Cosmos | 10²⁶ m | Friedmann models: age, fate, distances, expansion history |
+| 9 | Gravitational lens | 10²² m | Isothermal-ellipsoid cluster lens: arcs, rings, critical curves and caustics; distances from the cosmology |
+| 0 | Cosmos | 10²⁶ m | Friedmann models: age, fate, distances, expansion history |
 
 The dials at the top multiply c, G and ħ. Scroll, or drag the ruler, to move along the scale axis.
 

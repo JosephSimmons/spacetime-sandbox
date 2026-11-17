@@ -71,6 +71,20 @@ Calls made during the build, so they can be reviewed or overturned. Newest last.
 - The scale axis sets the time rate here: light crosses the field of view in
   four seconds of play.
 
+## Gravitational lens
+
+- Thin-lens approximation with a softened isothermal ellipsoid; the deflection
+  is the closed form of Kormann et al. (1994) in Keeton's (2001) notation, and
+  the unit tests check that its divergence is twice the convergence.
+- Distances use the Planck 2018 cosmology regardless of the cosmology
+  station's dials.
+- The quoted mass is that of a singular isothermal sphere inside its Einstein
+  radius, π σ² θ_E D_l / G. For an elliptical or cored lens it is a guide.
+- The image count comes from which caustics enclose the source centre, so it
+  describes a point source. The magnification is for the extended source, by
+  inverse ray shooting.
+- Background galaxies are a random field, not a catalogue.
+
 ## Scale axis
 
 - **Stations whose size depends on the constants move along the axis.** The
@@ -85,7 +99,7 @@ Calls made during the build, so they can be reviewed or overturned. Newest last.
 
 ## Challenges
 
-- Sixteen optional goals read each station's `probe()` values. Progress is
+- Eighteen optional goals read each station's `probe()` values. Progress is
   kept in the browser's local storage and can be cleared from the panel.
 - The galaxy's "reference curve" target is reachable (best χ² about 0.01);
   without a halo the best possible within the dial ranges is about 16.

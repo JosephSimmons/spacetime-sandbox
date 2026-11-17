@@ -121,7 +121,7 @@ export class App {
 <tr><td><kbd>drag</kbd></td><td>Orbit the view (or look around, when flying)</td></tr>
 <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <kbd>Q</kbd><kbd>E</kbd></td><td>Thrust when flying: forward, left, back, right, down, up</td></tr>
 <tr><td><kbd>Space</kbd></td><td>Brake to rest (flying)</td></tr>
-<tr><td><kbd>1</kbd>–<kbd>9</kbd></td><td>Jump to a station, smallest to largest</td></tr>
+<tr><td><kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd></td><td>Jump to a station, smallest to largest</td></tr>
 <tr><td><kbd>P</kbd></td><td>Pause the simulation</td></tr>
 <tr><td><kbd>R</kbd></td><td>Reset the current station</td></tr>
 <tr><td><kbd>H</kbd></td><td>Show or hide this help</td></tr>
@@ -203,7 +203,7 @@ export class App {
     if (input.hit('Escape')) { $('help').classList.add('hidden'); $('challenges').classList.add('hidden'); }
     if (input.hit('p')) { ctx.paused = !ctx.paused; this.toast(ctx.paused ? 'Paused' : 'Running'); }
     if (input.hit('r') && this.active) { this.active.reset(ctx); this.toast('Station reset'); }
-    for (let i = 0; i < Math.min(9, this.stations.length); i++) if (input.hit(String(i + 1))) this.jump(this.stations[i].id);
+    for (let i = 0; i < Math.min(10, this.stations.length); i++) if (input.hit(String((i + 1) % 10))) this.jump(this.stations[i].id);
 
     // If the constants moved the active station along the axis, move with it.
     if (this.active) {

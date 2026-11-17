@@ -7,13 +7,14 @@ import { StarStation } from './stations/star';
 import { SolarStation } from './stations/solar';
 import { InterstellarStation } from './stations/interstellar';
 import { GalaxyStation } from './stations/galaxy';
+import { LensStation } from './stations/lens';
 import { CosmosStation } from './stations/cosmos';
 import { Challenges } from './challenges';
 
-// Ordered small to large; number keys 1-9 jump to them in this order.
+// Ordered small to large; number keys 1-9 and 0 jump to them in this order.
 const stations = [
   new HydrogenStation(), new MDStation(), new LabStation(), new BlackHoleStation(),
-  new StarStation(), new SolarStation(), new InterstellarStation(), new GalaxyStation(), new CosmosStation(),
+  new StarStation(), new SolarStation(), new InterstellarStation(), new GalaxyStation(), new LensStation(), new CosmosStation(),
 ];
 const app = new App(stations, 1);
 new Challenges(app);
