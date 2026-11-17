@@ -8,10 +8,10 @@ import * as NB from '../physics/nbody';
 import { SI, Vec3, v3 } from '../physics/constants';
 import { num, fixed, length, duration, speed } from '../ui/format';
 
-const MAXB = 40, TRAIL = 420;
+const MAXB = 40, TRAIL = 1400;
 const AU_PER_YR = SI.AU / SI.yr; // m/s
 
-interface Body { name: string; color: number; radiusAU: number; trail: Float32Array; trailLen: number; lastTrail: Vec3; }
+interface Body { name: string; color: number; radiusAU: number; trail: Float32Array; trailLen: number; head: number; lastTrail: Vec3; }
 
 export class SolarStation extends Station {
   readonly id = 'solar';
@@ -40,6 +40,7 @@ export class SolarStation extends Station {
   private sel!: HTMLSelectElement;
   private rings: THREE.LineLoop[] = [];
   private actualRate = 0;
+  private pn = false;
   ejected = 0;
 
   private G(ctx: Ctx) { return NB.G_AU_YR * ctx.consts.G; }
@@ -73,8 +74,8 @@ export class SolarStation extends Station {
     this.state.n = base.n;
     this.state.pos.set(base.pos); this.state.vel.set(base.vel); this.state.mass.set(base.mass);
     this.state.mass[0] = this.sunMass;
-    this.bodies = [{ name: 'Sun', color: 0xffd27a, radiusAU: SI.Rsun / SI.AU, trail: new Float32Array(TRAIL * 3), trailLen: 0, lastTrail: [0, 0, 0] }];
-    for (const p of NB.PLANETS) this.bodies.push({ name: p.name, color: p.color, radiusAU: (p.radiusKm * 1e3) / SI.AU, trail: new Float32Array(TRAIL * 3), trailLen: 0, lastTrail: [1e9, 0, 0] });
+    this.bodies = [{ name: 'Sun', color: 0xffd27a, radiusAU: SI.Rsun / SI.AU, trail: new Float32Array(TRAIL * 3), trailLen: 0, head: 0, lastTrail: [0, 0, 0] }];
+    for (const p of NB.PLANETS) this.bodies.push({ name: p.name, color: p.color, radiusAU: (p.radiusKm * 1e3) / SI.AU, trail: new Float32Array(TRAIL * 3), trailLen: 0, head: 0, lastTrail: [1e9, 0, 0] });
     this.time = 0; this.ejected = 0;
     NB.computeAccelerations(this.state, G, 1e-5);
     this.rebase(ctx);
@@ -104,11 +105,13 @@ export class SolarStation extends Station {
     left.section('Gravity');
     left.dial({ label: 'Mass of the Sun', min: 0.1, max: 10, value: this.sunMass, log: true, fmt: (v) => `${num(v, 3)} M☉`, onChange: (v) => { this.sunMass = v; this.state.mass[0] = v; this.rebase(ctx); } });
     left.note('G is the dial at the top. Changing either one mid-flight leaves every body with its old velocity in a new potential.');
+    left.toggle('Relativistic correction (first post-Newtonian, Sun’s field)', this.pn, (v) => { this.pn = v; this.rebase(ctx); });
+    left.note('With it on, orbits precess as general relativity predicts: 43″ a century for Mercury. Turn c down to about 1,000 km/s and Mercury’s ellipse swings round by 2.6° every orbit.');
     left.section('Add a body');
     left.dial({ label: 'Mass', min: 1e-10, max: 2, value: this.addMass, log: true, fmt: (v) => (v < 1e-4 ? `${num(v / 3.0404e-6, 2)} M⊕` : `${num(v, 2)} M☉`), onChange: (v) => (this.addMass = v) });
     left.dial({ label: 'Launch speed', min: 0, max: 1.6, value: this.addSpeed, step: 0.01, fmt: (v) => `${fixed(v, 2)} × circular`, onChange: (v) => (this.addSpeed = v) });
     const arm = button('Arm: click to place', () => { this.addArmed = !this.addArmed; arm.classList.toggle('on', this.addArmed); });
-    left.buttons(arm, button('Reset system', () => this.reset(ctx)));
+    left.buttons(arm, button('Reset system', () => ctx.resetActive()));
     left.note('Bodies are placed in the ecliptic, moving prograde. Escape speed is 1.41 × circular.');
 
     right.section('Integrator');
@@ -122,7 +125,7 @@ export class SolarStation extends Station {
     this.plot = new Plot(150, 'Effective potential of the selected orbit about the Sun, with its energy (dashed) and current radius (dot).');
     right.add(this.plot.el);
     right.section('Relativity check');
-    right.note('Orbits here are Newtonian. The precession figure is what general relativity would add, and it scales as G/c².');
+    right.note('Orbits are Newtonian unless the relativistic correction is on. The precession figure is the first-order prediction of general relativity and scales as G/c². With the correction on, the Newtonian energy shown above is no longer exactly conserved.');
   }
 
   private spawn(x: number, y: number, ctx: Ctx) {
@@ -138,7 +141,7 @@ export class SolarStation extends Station {
     s.vel.set([s.vel[0] - (ry / r) * vc, s.vel[1] + (rx / r) * vc, s.vel[2]], 3 * i);
     s.mass[i] = this.addMass;
     const big = this.addMass > 1e-3;
-    this.bodies.push({ name: `Body ${i - 8}`, color: big ? 0xffb454 : 0xd29bff, radiusAU: big ? SI.Rsun / SI.AU * Math.pow(this.addMass, 0.8) : 4.26e-5 * Math.cbrt(this.addMass / 3e-6), trail: new Float32Array(TRAIL * 3), trailLen: 0, lastTrail: [1e9, 0, 0] });
+    this.bodies.push({ name: `Body ${i - 8}`, color: big ? 0xffb454 : 0xd29bff, radiusAU: big ? SI.Rsun / SI.AU * Math.pow(this.addMass, 0.8) : 4.26e-5 * Math.cbrt(this.addMass / 3e-6), trail: new Float32Array(TRAIL * 3), trailLen: 0, head: 0, lastTrail: [1e9, 0, 0] });
     this.selected = i; this.syncSelect();
     this.rebase(ctx);
   }
@@ -151,11 +154,24 @@ export class SolarStation extends Station {
       const x = s.pos[3 * i], y = s.pos[3 * i + 1], z = s.pos[3 * i + 2];
       const lt = b.lastTrail, moved = Math.hypot(x - lt[0], y - lt[1], z - lt[2]);
       const dSun = Math.hypot(x - s.pos[0], y - s.pos[1], z - s.pos[2]);
-      if (moved > Math.max(dSun * 0.03, 1e-4)) {
-        if (b.trailLen === TRAIL) b.trail.copyWithin(0, 3); else b.trailLen++;
-        b.trail[3 * (b.trailLen - 1)] = x; b.trail[3 * (b.trailLen - 1) + 1] = y; b.trail[3 * (b.trailLen - 1) + 2] = z;
+      if (moved > Math.max(dSun * 0.04, 1e-4)) {
+        // Ring buffer: head is the next slot to write.
+        b.trail[3 * b.head] = x; b.trail[3 * b.head + 1] = y; b.trail[3 * b.head + 2] = z;
+        b.head = (b.head + 1) % TRAIL;
+        if (b.trailLen < TRAIL) b.trailLen++;
         lt[0] = x; lt[1] = y; lt[2] = z;
       }
+    }
+  }
+
+  /** Relativistic correction from the Sun's field, applied as a velocity kick after each step. */
+  private pnKick(h: number, G: number, c: number) {
+    const s = this.state, mu = G * s.mass[0];
+    for (let i = 1; i < s.n; i++) {
+      const r: Vec3 = [s.pos[3 * i] - s.pos[0], s.pos[3 * i + 1] - s.pos[1], s.pos[3 * i + 2] - s.pos[2]];
+      const v: Vec3 = [s.vel[3 * i] - s.vel[0], s.vel[3 * i + 1] - s.vel[1], s.vel[3 * i + 2] - s.vel[2]];
+      const a = NB.pnAcceleration(r, v, mu, c);
+      s.vel[3 * i] += a[0] * h; s.vel[3 * i + 1] += a[1] * h; s.vel[3 * i + 2] += a[2] * h;
     }
   }
 
@@ -193,7 +209,12 @@ export class SolarStation extends Station {
       const steps = Math.min(Math.ceil(want / h), 500);
       const hh = Math.min(h, want / steps);
       const n0 = s.n;
-      for (let k = 0; k < steps; k++) { NB.yoshida4(s, hh, G, 1e-5); this.sampleTrails(); }
+      const cAU = NB.C_AU_YR * ctx.consts.c;
+      for (let k = 0; k < steps; k++) {
+        NB.yoshida4(s, hh, G, 1e-5);
+        if (this.pn) this.pnKick(hh, G, cAU);
+        this.sampleTrails();
+      }
       this.time += steps * hh; this.actualRate = (steps * hh) / dt;
       // Remove anything that has left for good or fallen into the Sun.
       for (let i = s.n - 1; i >= 1; i--) {
@@ -218,10 +239,14 @@ export class SolarStation extends Station {
       m.scale.setScalar(Math.max(b.radiusAU, minR * (i === 0 ? 1.8 : 1)));
       (m.material as THREE.MeshBasicMaterial).color.setHex(b.color);
       const attr = l.geometry.getAttribute('position') as THREE.BufferAttribute;
-      (attr.array as Float32Array).set(b.trail.subarray(0, b.trailLen * 3));
-      if (b.trailLen < TRAIL) (attr.array as Float32Array).set([x, y, z], b.trailLen * 3);
+      const arr = attr.array as Float32Array;
+      // Unroll the ring buffer, oldest first, and finish at the body itself.
+      if (b.trailLen < TRAIL) arr.set(b.trail.subarray(0, b.trailLen * 3));
+      else { arr.set(b.trail.subarray(3 * b.head), 0); arr.set(b.trail.subarray(0, 3 * b.head), 3 * (TRAIL - b.head)); }
+      const end = Math.min(b.trailLen, TRAIL - 1);
+      arr[3 * end] = x; arr[3 * end + 1] = y; arr[3 * end + 2] = z;
       attr.needsUpdate = true;
-      l.geometry.setDrawRange(0, Math.min(b.trailLen + 1, TRAIL));
+      l.geometry.setDrawRange(0, end + 1);
       l.visible = i > 0; (l.material as THREE.LineBasicMaterial).color.setHex(b.color);
       const apparent = Math.max(b.radiusAU, minR) / this.rig.dist;
       if (apparent > 0.004) ctx.labels.put(b.name, m.position, this.camera, ctx.view, i === this.selected);

@@ -57,6 +57,15 @@ Calls made during the build, so they can be reviewed or overturned. Newest last.
 - **Molecular dynamics** is Lennard-Jones argon in reduced units with a
   2.5σ shifted cutoff.
 
+## Solar system
+
+- Bodies interact by Newtonian gravity with a fourth-order symplectic
+  integrator. The optional relativistic correction is the first
+  post-Newtonian term for the Sun's field only, applied as a velocity kick
+  after each step. It reproduces the periapsis advance (tested) but is an
+  expansion in v/c, so it is not trustworthy once orbital speeds pass a few
+  tenths of c.
+
 ## Interstellar flight
 
 - The star field is drawn from a Salpeter-like mass function at 0.004 stars per

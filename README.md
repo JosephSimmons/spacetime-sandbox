@@ -32,6 +32,19 @@ npm run build    # single self-contained dist/index.html
 node scripts/smoke.mjs   # headless check of every station (needs Chrome and Playwright)
 ```
 
+## How it is checked
+
+- `npm test`: 60 unit tests of the physics core against analytic or tabulated
+  results (Lorentz factors and hyperbolic motion, Kepler periods and energy
+  conservation, light deflection and the photon sphere, periapsis precession,
+  Lane–Emden solutions, Friedmann ages and distances, hydrogen normalisation,
+  Lennard-Jones energy conservation, lensing identities).
+- `node scripts/smoke.mjs`: loads the build headlessly, visits every station,
+  moves every dial and fails on any runtime error.
+- `node scripts/play.mjs`: plays through a handful of interactions end to end.
+- `node scripts/shadow_check.mjs`: measures the black hole's rendered shadow
+  and compares it with the analytic size. The shader agrees to better than 1%.
+
 ## Layout
 
 - `src/physics` — rendering-free physics core, unit-tested

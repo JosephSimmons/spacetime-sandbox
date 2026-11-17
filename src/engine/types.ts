@@ -22,6 +22,8 @@ export interface Ctx {
   toast(msg: string): void;
   setLogScale(v: number): void;
   constsChanged(): void;
+  /** Reset the active station and rebuild its panels so the dials match. */
+  resetActive(): void;
 }
 
 /**

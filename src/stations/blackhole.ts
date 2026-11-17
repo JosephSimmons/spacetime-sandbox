@@ -17,7 +17,7 @@ const FRAG = /* glsl */ `
 precision highp float;
 varying vec2 vUv;
 uniform vec3 uCam, uRight, uUp, uFwd;
-uniform float uTanFov, uAspect, uRin, uRout, uTpeak, uDisk, uShift, uGridOn, uTime, uExposure, uObsF;
+uniform float uTanFov, uAspect, uRin, uRout, uTpeak, uDisk, uShift, uGridOn, uTime, uExposure, uObsF, uFlatSky;
 ${BLACKBODY_GLSL}
 float hash1(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 vec2 hash2(vec2 p){ return vec2(hash1(p), hash1(p + 19.19)); }
@@ -99,7 +99,8 @@ void main(){
       if (rr > uRin && rr < uRout) { col = disc(hit, rr, ly); resolved = true; break; }
     }
   }
-  if (!resolved) col = sky(normalize(v));
+  // uFlatSky is a calibration aid used by scripts/shadow_check.mjs.
+  if (!resolved) col = uFlatSky > 0.5 ? vec3(0.5) : sky(normalize(v));
   col = 1.0 - exp(-col * uExposure);
   gl_FragColor = vec4(pow(col, vec3(1.0 / 2.2)), 1.0);
 }`;
@@ -137,7 +138,7 @@ export class BlackHoleStation extends Station {
         uCam: { value: new THREE.Vector3() }, uRight: { value: new THREE.Vector3() }, uUp: { value: new THREE.Vector3() }, uFwd: { value: new THREE.Vector3() },
         uTanFov: { value: Math.tan((55 * Math.PI) / 360) }, uAspect: { value: 1 },
         uRin: { value: 6 }, uRout: { value: 22 }, uTpeak: { value: 7500 }, uDisk: { value: 1 }, uShift: { value: 1 }, uGridOn: { value: 0 },
-        uTime: { value: 0 }, uExposure: { value: 0.55 }, uObsF: { value: 1 }, uBB: { value: blackbodyTexture() },
+        uTime: { value: 0 }, uFlatSky: { value: 0 }, uExposure: { value: 0.55 }, uObsF: { value: 1 }, uBB: { value: blackbodyTexture() },
       },
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
       fragmentShader: FRAG, depthTest: false, depthWrite: false,

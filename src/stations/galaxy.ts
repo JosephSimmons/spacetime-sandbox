@@ -98,7 +98,7 @@ export class GalaxyStation extends Station {
   }
 
   onConsts(ctx: Ctx) { if (this.built) this.accel = GX.makeAccelerator(this.p(ctx)); }
-  reset(ctx: Ctx) { this.params = { ...GX.MILKY_WAY }; for (const k in this.dials) this.dials[k].set((this.params as any)[k]); this.seed(ctx); }
+  reset(ctx: Ctx) { this.params = { ...GX.MILKY_WAY }; this.seed(ctx); }
 
   panels(left: Panel, right: Panel, ctx: Ctx) {
     const set = (k: keyof GX.GalaxyParams) => (v: number) => { (this.params as any)[k] = v; this.accel = GX.makeAccelerator(this.p(ctx)); };
@@ -114,7 +114,7 @@ export class GalaxyStation extends Station {
     left.buttons(
       button('Remove dark matter', () => { this.dials.haloMass.set(0, true); ctx.toast('Halo removed: the stars keep their speeds, but the pull has gone'); }),
       button('Re-settle stars', () => this.seed(ctx)),
-      button('Reset', () => this.reset(ctx)),
+      button('Reset', () => ctx.resetActive()),
     );
     left.note('Changing the dials leaves every star with its current velocity. "Re-settle" starts them again on near-circular orbits for the current potential.');
     left.note('Blue stars start on two spiral arms. With no self-gravity, differential rotation winds them up: the winding problem.');

@@ -64,4 +64,43 @@ describe('n-body gravity', () => {
     expect(ratio).toBeGreaterThan(12);
     expect(ratio).toBeLessThan(20);
   });
+
+  it('post-Newtonian term gives the relativistic periapsis advance', () => {
+    const mu = 4 * Math.PI ** 2, a = 1, e = 0.3;
+    const c = Math.sqrt(mu / (a * 1e-4)); // so that GM / (a c^2) = 1e-4
+    const start = N.elementsToState(a, e, 0, 0, 0, 0, mu);
+    let r = start.r, v = start.v;
+    const acc = (rr: [number, number, number], vv: [number, number, number]) => {
+      const d = Math.hypot(...rr), pn = N.pnAcceleration(rr, vv, mu, c);
+      return [-mu * rr[0] / d ** 3 + pn[0], -mu * rr[1] / d ** 3 + pn[1], -mu * rr[2] / d ** 3 + pn[2]] as [number, number, number];
+    };
+    const add = (p: number[], q: number[], k: number) => [p[0] + q[0] * k, p[1] + q[1] * k, p[2] + q[2] * k] as [number, number, number];
+    const h = 2e-4, orbits = 5;
+    let prevR = Math.hypot(...r), prevPrev = prevR, peri: number[] = [];
+    for (let i = 0; i < (orbits + 0.5) / h; i++) {
+      const k1v = acc(r, v), k1r = v;
+      const k2r = add(v, k1v, h / 2), k2v = acc(add(r, k1r, h / 2), k2r);
+      const k3r = add(v, k2v, h / 2), k3v = acc(add(r, k2r, h / 2), k3r);
+      const k4r = add(v, k3v, h), k4v = acc(add(r, k3r, h), k4r);
+      const rn = add(r, [0, 1, 2].map((j) => (k1r[j] + 2 * k2r[j] + 2 * k3r[j] + k4r[j]) / 6), h);
+      v = add(v, [0, 1, 2].map((j) => (k1v[j] + 2 * k2v[j] + 2 * k3v[j] + k4v[j]) / 6), h);
+      const d = Math.hypot(...rn);
+      // At each periapsis passage, read the direction of the eccentricity vector.
+      if (prevR < prevPrev && d > prevR && i > 10) {
+        const hv = [r[1] * v[2] - r[2] * v[1], r[2] * v[0] - r[0] * v[2], r[0] * v[1] - r[1] * v[0]];
+        const ex = (v[1] * hv[2] - v[2] * hv[1]) / mu - r[0] / prevR, ey = (v[2] * hv[0] - v[0] * hv[2]) / mu - r[1] / prevR;
+        peri.push(Math.atan2(ey, ex));
+      }
+      prevPrev = prevR; prevR = d; r = rn;
+    }
+    const advance = (peri[peri.length - 1] - peri[0]) / (peri.length - 1);
+    const expected = (6 * Math.PI * mu) / (a * (1 - e * e) * c * c);
+    expect(advance / expected).toBeCloseTo(1, 2);
+  });
+  it('Mercury precesses by 43 arcseconds a century', () => {
+    const m = N.PLANETS[0];
+    const perOrbit = (6 * Math.PI * N.G_AU_YR) / (m.a * (1 - m.e ** 2) * N.C_AU_YR ** 2);
+    const period = Math.sqrt(m.a ** 3);
+    expect((perOrbit * 206264.806 * 100) / period).toBeCloseTo(43.0, 0);
+  });
 });

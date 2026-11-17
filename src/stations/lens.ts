@@ -129,9 +129,9 @@ export class LensStation extends Station {
   }
 
   onConsts() { this.dirty = true; }
-  reset() { this.src = [3, 2]; this.dirty = true; }
+  reset() { this.src = [3, 2]; this.sigma = 1100; this.zl = 0.5; this.zs = 2.0; this.q = 0.7; this.core = 0; this.dirty = true; }
 
-  panels(left: Panel, right: Panel, _ctx: Ctx) {
+  panels(left: Panel, right: Panel, ctx: Ctx) {
     const u = this.mat.uniforms;
     const touch = (f: (v: number) => void) => (v: number) => { f(v); this.dirty = true; };
     left.title(this.name).blurb(this.blurb);
@@ -148,7 +148,7 @@ export class LensStation extends Station {
     left.toggle('Light of the cluster itself', true, (v) => (u.uLensLight.value = v ? 1 : 0));
     left.toggle('Critical curves', false, (v) => (u.uCrit.value = v ? 1 : 0));
     left.toggle('Source-plane grid (5″ squares)', false, (v) => (u.uGrid.value = v ? 1 : 0));
-    left.buttons(button('Centre the source', () => { this.src = [0, 0]; this.dirty = true; }), button('Reset', () => this.reset()));
+    left.buttons(button('Centre the source', () => { this.src = [0, 0]; this.dirty = true; }), button('Reset', () => ctx.resetActive()));
     left.note('The background galaxies are a random field, there to show the distortion. They are not a catalogue.');
 
     right.section('The lens');

@@ -190,3 +190,19 @@ export function solarSystem(G = G_AU_YR): NBodyState {
   computeAccelerations(s, G);
   return s;
 }
+
+/** Speed of light in AU per year. */
+export const C_AU_YR = 63241.07708;
+
+/**
+ * First post-Newtonian correction to the acceleration of a test body orbiting a
+ * mass with mu = GM (harmonic coordinates):
+ *   a = mu / (c^2 r^3) [ (4 mu / r - v^2) r + 4 (r . v) v ].
+ * Added to Newtonian gravity it reproduces the relativistic advance of
+ * periapsis, 6 pi mu / (a (1 - e^2) c^2) per orbit.
+ */
+export function pnAcceleration(r: Vec3, v: Vec3, mu: number, c: number): Vec3 {
+  const d = v3.len(r), v2 = v3.dot(v, v), rv = v3.dot(r, v);
+  const k = mu / (c * c * d * d * d), f = (4 * mu) / d - v2;
+  return [k * (f * r[0] + 4 * rv * v[0]), k * (f * r[1] + 4 * rv * v[1]), k * (f * r[2] + 4 * rv * v[2])];
+}

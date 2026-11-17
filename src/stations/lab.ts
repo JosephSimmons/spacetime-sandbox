@@ -153,7 +153,7 @@ export class LabStation extends Station {
     left.section('Ship');
     left.toggle('Match thrust to c (reach 0.46c in one second)', true, (v) => { this.autoThrust = v; });
     this.thrustDial = left.dial({ label: 'Manual thrust', min: 0.01, max: 1e9, value: 1, log: true, fmt: (v) => `${num(v, 3)} g`, onChange: (v) => (this.thrustG = v) });
-    left.buttons(button('Brake to rest', () => (this.w = [0, 0, 0])), button('Reset', () => this.reset(ctx)));
+    left.buttons(button('Brake to rest', () => (this.w = [0, 0, 0])), button('Reset', () => ctx.resetActive()));
     left.section('Timed run');
     left.blurb('Carry a particle with a fixed proper lifetime to a ring 60 cells away. Light itself would need two and a half lifetimes to get there.');
     left.buttons(button('Start muon run', () => this.startRun(ctx)));

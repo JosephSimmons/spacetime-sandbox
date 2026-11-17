@@ -42,6 +42,7 @@ export class App {
       toast: (m) => this.toast(m),
       setLogScale: (v) => { this.ctx.logScale = Math.min(SCALE_MAX, Math.max(SCALE_MIN, v)); },
       constsChanged: () => this.syncConsts(),
+      resetActive: () => this.resetActive(),
     };
     this.ruler = new Ruler($('ruler') as HTMLCanvasElement, (v) => this.ctx.setLogScale(v), (name) => this.jump(name));
     this.buildConstDials();
@@ -132,6 +133,15 @@ export class App {
     h.append(el('div', { class: 'btnrow' }, button('Close', () => h.classList.add('hidden'))));
   }
 
+  private resetActive() {
+    const st = this.active;
+    if (!st) return;
+    st.reset(this.ctx);
+    this.left.clear(); this.right.clear();
+    st.panels(this.left, this.right, this.ctx);
+    this.syncConsts();
+  }
+
   toast(msg: string) {
     const t = $('toast');
     t.textContent = msg; t.style.opacity = '1';
@@ -202,7 +212,7 @@ export class App {
     if (input.hit('h')) $('help').classList.toggle('hidden');
     if (input.hit('Escape')) { $('help').classList.add('hidden'); $('challenges').classList.add('hidden'); }
     if (input.hit('p')) { ctx.paused = !ctx.paused; this.toast(ctx.paused ? 'Paused' : 'Running'); }
-    if (input.hit('r') && this.active) { this.active.reset(ctx); this.toast('Station reset'); }
+    if (input.hit('r') && this.active) { this.resetActive(); this.toast('Station reset'); }
     for (let i = 0; i < Math.min(10, this.stations.length); i++) if (input.hit(String((i + 1) % 10))) this.jump(this.stations[i].id);
 
     // If the constants moved the active station along the axis, move with it.
