@@ -30,7 +30,8 @@ export class CosmosStation extends Station {
   private epoch = 0; // Gyr relative to today
   private playing = false;
   private dials: Record<string, Dial> = {};
-  private ro!: Readouts; private aPlot!: Plot; private hubble!: Plot;
+  private ro!: Readouts; private aPlot!: Plot; private hubble!: Plot; private cone!: Plot;
+  private coneData: C.ConeDiagram | null = null;
   private epochDial!: Dial;
   private refZ: number[] = []; private refMu: number[] = [];
   private derived = { age: NaN, horizon: NaN };
@@ -103,6 +104,7 @@ export class CosmosStation extends Station {
     this.dirty = false;
     const p = this.params;
     this.hist = C.history(p, 60);
+    this.coneData = C.coneDiagram(this.hist);
     this.derived.age = C.age(p);
     this.derived.horizon = C.hasBigBang(p) ? C.comovingDistance(1e4, p) : NaN;
     // Redshift of each galaxy as seen from the centre today, from a lookup of chi(z).
@@ -157,6 +159,9 @@ export class CosmosStation extends Station {
     right.section('Scale factor');
     this.aPlot = new Plot(150, 'a(t), with today at t = 0. The dot is the epoch shown.');
     right.add(this.aPlot.el);
+    right.section('Light cone');
+    this.cone = new Plot(170, 'Proper distance against time. White: your past light cone, everything you can see now. Blue: the Hubble sphere, receding at c. Amber: the particle horizon.');
+    right.add(this.cone.el);
     right.section('Hubble diagram');
     this.hubble = new Plot(150, 'Distance modulus against redshift. Blue: this model. Dots: Planck 2018 ΛCDM, for reference.');
     right.add(this.hubble.el);
@@ -214,6 +219,19 @@ export class CosmosStation extends Station {
       series: [{ x: h.t, y: h.a }], xRange: [Math.max(h.t[0], -40), tMax], yRange: [0, aMax * 1.05],
       vlines: [{ x: 0, label: 'today' }], markers: [{ x: this.epoch, y: this.scaleFactor() }], xLabel: 't (Gyr)', yLabel: 'a',
     });
+    const cd = this.coneData;
+    if (cd) {
+      const tLo = Math.max(h.t[0], -40), tHi = Math.min(tMax, 25);
+      this.cone.draw({
+        series: [
+          { x: cd.hubble, y: cd.t, color: '#6fd3ff', label: 'c/H' },
+          { x: cd.horizon, y: cd.t, color: '#ffb454', label: 'horizon' },
+          { x: cd.lightCone, y: cd.t, color: '#ffffff', width: 1.8, label: 'light cone' },
+        ],
+        xRange: [0, 60], yRange: [tLo, tHi], hlines: [{ y: 0, label: 'today', color: 'rgba(140,170,200,0.5)' }],
+        xLabel: 'proper distance (Gly)', yLabel: 't (Gyr)',
+      });
+    }
     const zs: number[] = [], mu: number[] = [];
     if (big) for (let z = 0.02; z <= 2.0; z += 0.04) { zs.push(z); mu.push(C.distanceModulus(z, p)); }
     this.hubble.draw({ series: [{ x: zs, y: mu }, { x: this.refZ, y: this.refMu, color: '#ff7a7a', points: true }], xRange: [0, 2], yRange: [33, 47], xLabel: 'z', yLabel: 'μ' });

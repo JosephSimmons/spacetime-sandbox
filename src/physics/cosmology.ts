@@ -143,3 +143,33 @@ export function angularDistanceBetween(z1: number, z2: number, p: CosmoParams): 
   const dm = m2 * Math.sqrt(1 + (ok * m1 * m1) / (dh * dh)) - m1 * Math.sqrt(1 + (ok * m2 * m2) / (dh * dh));
   return dm / (1 + z2);
 }
+
+export interface ConeDiagram { t: number[]; lightCone: number[]; hubble: number[]; horizon: number[]; }
+
+/**
+ * Proper-distance spacetime diagram for an observer today, from a history:
+ * the past light cone, the Hubble sphere c/H and the particle horizon, all in
+ * billions of light-years against time in Gyr (c = 1 Gly/Gyr).
+ */
+export function coneDiagram(h: History): ConeDiagram {
+  const n = h.t.length;
+  const today = h.t.findIndex((t) => t === 0);
+  const out: ConeDiagram = { t: [], lightCone: [], hubble: [], horizon: [] };
+  // Conformal time eta(t) = integral dt / a, by the trapezium rule, starting at the Bang.
+  const eta = new Float64Array(n);
+  for (let i = 1; i < n; i++) {
+    const a0 = Math.max(h.a[i - 1], 1e-4), a1 = Math.max(h.a[i], 1e-4);
+    // Near a -> 0 the integrand is singular but integrable; use the geometric mean there.
+    eta[i] = eta[i - 1] + (h.t[i] - h.t[i - 1]) / Math.sqrt(a0 * a1);
+  }
+  for (let i = 1; i < n - 1; i++) {
+    const a = h.a[i];
+    if (!(a > 0)) continue;
+    const adot = (h.a[i + 1] - h.a[i - 1]) / (h.t[i + 1] - h.t[i - 1]);
+    out.t.push(h.t[i]);
+    out.lightCone.push(i <= today ? a * (eta[today] - eta[i]) : NaN);
+    out.hubble.push(adot > 1e-9 ? a / adot : NaN);
+    out.horizon.push(h.fate === 'no big bang' ? NaN : a * eta[i]);
+  }
+  return out;
+}

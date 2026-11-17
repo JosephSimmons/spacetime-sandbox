@@ -86,6 +86,18 @@ describe('cosmology', () => {
     expect(closed.tEnd - closed.tBang).toBeCloseTo(life, 0);
     expect(C.history({ H0: 70, Om: 0.1, OL: 2.5, Or: 0 }).fate).toBe('no big bang');
   });
+  it('cone diagram reproduces Einstein-de Sitter results', () => {
+    const p = { H0: 70, Om: 1, OL: 0, Or: 0 };
+    const h = C.history(p, 20, 1500), d = C.coneDiagram(h);
+    const t0 = C.age(p);
+    // Particle horizon today is 3 c t0; Hubble radius is 1.5 c t0.
+    const i = d.t.findIndex((t) => t >= 0);
+    expect(d.horizon[i] / (3 * t0)).toBeCloseTo(1, 1);
+    expect(d.hubble[i] / (1.5 * t0)).toBeCloseTo(1, 1);
+    // The light cone is widest where it crosses the Hubble sphere, at a = 4/9: proper distance (8/27) * 1.5 c t0... = (4/9) c t0.
+    const widest = Math.max(...d.lightCone.filter((v) => isFinite(v)));
+    expect(widest / ((4 / 9) * t0)).toBeCloseTo(1, 1);
+  });
   it('redshift at distance inverts comoving distance', () => {
     const d = C.comovingDistance(0.8, C.PLANCK18);
     expect(C.redshiftAtDistance(d, C.PLANCK18)).toBeCloseTo(0.8, 4);

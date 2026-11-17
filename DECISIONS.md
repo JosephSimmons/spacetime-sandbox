@@ -66,6 +66,18 @@ Calls made during the build, so they can be reviewed or overturned. Newest last.
   expansion in v/c, so it is not trustworthy once orbital speeds pass a few
   tenths of c.
 
+- The figure-eight set piece uses the Chenciner-Montgomery initial conditions
+  scaled to solar masses and astronomical units. It replaces the planets; the
+  relativistic correction is switched off while it runs.
+
+## Cosmology
+
+- The light-cone diagram is in proper distance for an observer today, built
+  from the same integrated expansion history as the scale-factor plot.
+- Galaxy positions in the 3D view are an illustrative clustered pattern in
+  comoving coordinates; only their redshift colouring and the horizon spheres
+  come from the model.
+
 ## Interstellar flight
 
 - The star field is drawn from a Salpeter-like mass function at 0.004 stars per
