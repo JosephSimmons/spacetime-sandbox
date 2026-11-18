@@ -31,8 +31,13 @@ export class LabStation extends Station {
   w: Vec3 = [0, 0, 0];
   yaw = -Math.PI / 2; pitch = 0;
   tau = 0; t = 0;
+  /** Unwrapped distance along the track; pos itself is kept inside one period. */
+  odoX = 0;
   private autoThrust = true;
   private autoExposure = true;
+  /** Cruise control: hold a speed along the track without holding a key. 0 is off. */
+  cruise = 0;
+  private cruiseDial!: Dial;
   private thrustG = 1;
   private thrustDial!: Dial;
   private ro!: Readouts;
@@ -151,9 +156,11 @@ export class LabStation extends Station {
     left.toggle('Sodium-lamp world (single 589 nm line)', false, (v) => (u.uMono.value = v ? 1 : 0));
     left.toggle('Auto exposure (adapt to the beamed view)', true, (v) => (this.autoExposure = v));
     left.section('Ship');
-    left.toggle('Match thrust to c (reach 0.46c in one second)', true, (v) => { this.autoThrust = v; });
+    left.toggle('Match thrust to c (reach 0.46c in one second when light is slow)', true, (v) => { this.autoThrust = v; });
     this.thrustDial = left.dial({ label: 'Manual thrust', min: 0.01, max: 1e9, value: 1, log: true, fmt: (v) => `${num(v, 3)} g`, onChange: (v) => (this.thrustG = v) });
-    left.buttons(button('Brake to rest', () => (this.w = [0, 0, 0])), button('Reset', () => ctx.resetActive()));
+    left.buttons(button('Brake to rest', () => { this.w = [0, 0, 0]; this.cruiseDial.set(0, true); }), button('Reset', () => ctx.resetActive()));
+    this.cruiseDial = left.dial({ label: 'Cruise along the track', min: 0, max: 0.99, value: this.cruise, step: 0.01, fmt: (v) => (v === 0 ? 'off' : `${fixed(v, 2)} c`), onChange: (v) => (this.cruise = v) });
+    left.note('Cruise accelerates you down the track to the set speed and holds it, so you can drag to look around. Any thrust key takes over.');
     left.section('Timed run');
     left.blurb('Carry a particle with a fixed proper lifetime to a ring 60 cells away. Light itself would need two and a half lifetimes to get there.');
     left.buttons(button('Start muon run', () => this.startRun(ctx)));
@@ -166,16 +173,31 @@ export class LabStation extends Station {
     right.add(this.diagram.el);
   }
 
+  /**
+   * Turning c down mid-flight would otherwise keep the ship's proper velocity
+   * and could put it at 0.99c in one step. Cap the speed at half the new c.
+   */
+  private lastC = 1;
+  onConsts(ctx: Ctx) {
+    if (!this.built) return;
+    const ratio = ctx.consts.c / this.lastC;
+    this.lastC = ctx.consts.c;
+    if (ratio >= 1) return;
+    const cg = this.cGrid(ctx), wl = v3.len(this.w);
+    const wMax = (0.5 / Math.sqrt(0.75)) * cg;
+    if (wl > wMax) { this.w = v3.scale(this.w, wMax / wl); ctx.toast('Light slowed below your speed: ship slowed to 0.5c'); }
+  }
+
   startRun(ctx: Ctx) {
     const cg = this.cGrid(ctx);
     this.pos = [Math.floor(this.pos[0] / 20) * 20, 3, 0]; this.w = [0, 0, 0]; this.yaw = -Math.PI / 2; this.pitch = 0;
-    this.run = { active: true, startX: this.pos[0], distance: 60, lifetime: 24 / cg, tau0: this.tau, result: '' };
+    this.run = { active: true, startX: this.odoX, distance: 60, lifetime: 24 / cg, tau0: this.tau, result: '' };
     this.marker.position.set(this.pos[0] + 60, 4.5, 0); this.marker.visible = true;
     ctx.toast('Run started: reach the ring before the lifetime runs out');
   }
 
   reset(_ctx: Ctx) {
-    this.pos = [0, 2, 0]; this.w = [0, 0, 0]; this.yaw = -Math.PI / 2; this.pitch = 0; this.tau = 0; this.t = 0; this.trail = [];
+    this.pos = [0, 2, 0]; this.w = [0, 0, 0]; this.yaw = -Math.PI / 2; this.pitch = 0; this.tau = 0; this.t = 0; this.odoX = 0; this.trail = [];
     this.run.active = false; this.run.result = ''; this.marker.visible = false;
   }
 
@@ -190,11 +212,20 @@ export class LabStation extends Station {
 
     if (!ctx.paused) {
       // Proper acceleration in cells per second squared.
-      const aMag = this.autoThrust ? 0.5 * cg : (this.thrustG * 9.80665) / this.cell(ctx);
+      // Matched thrust is capped so that at the real speed of light the ship flies at ordinary speeds.
+      const aMag = this.autoThrust ? 0.5 * Math.min(cg, 30) : (this.thrustG * 9.80665) / this.cell(ctx);
       const f = input.axis(['s', 'ArrowDown'], ['w', 'ArrowUp']), r = input.axis(['a', 'ArrowLeft'], ['d', 'ArrowRight']), up = input.axis(['q'], ['e']);
       let alpha: Vec3 = [fwd[0] * f + right[0] * r, fwd[1] * f + up, fwd[2] * f + right[2] * r];
-      const al = v3.len(alpha);
+      let al = v3.len(alpha);
       const wl = v3.len(this.w);
+      if (al === 0 && this.cruise > 0 && !input.down(' ')) {
+        // Steer the proper velocity toward the cruise target along +x.
+        const wT = (this.cruise / Math.sqrt(1 - this.cruise * this.cruise)) * cg;
+        const err: Vec3 = [wT - this.w[0], -this.w[1], -this.w[2]];
+        const el = v3.len(err), g0 = gammaFromW(this.w, cg);
+        if (el > aMag * dt * g0) { alpha = v3.scale(err, 1 / el); al = 1; }
+        else this.w = [wT, 0, 0];
+      }
       if (input.down(' ') && wl > 0) {
         alpha = v3.scale(this.w, -1 / wl);
         if (wl < aMag * dt * 1.5) { this.w = [0, 0, 0]; alpha = [0, 0, 0]; }
@@ -206,8 +237,12 @@ export class LabStation extends Station {
         const g = gammaFromW(this.w, cg);
         // dx = v dt = (w / gamma)(gamma dtau) = w dtau
         this.pos = v3.add(this.pos, v3.scale(this.w, dtau));
+        this.odoX += this.w[0] * dtau;
         this.t += g * dtau; this.tau += dtau;
       }
+      // The lattice repeats, so keep the observer inside one period to preserve shader precision.
+      this.pos[0] = ((this.pos[0] % PERIOD) + PERIOD) % PERIOD;
+      this.pos[2] = (((this.pos[2] + PERIOD / 2) % PERIOD) + PERIOD) % PERIOD - PERIOD / 2;
       if (this.pos[1] < 0.6) { this.pos[1] = 0.6; if (this.w[1] < 0) this.w[1] = 0; }
       if (this.pos[1] > 120) { this.pos[1] = 120; if (this.w[1] > 0) this.w[1] = 0; }
     }
@@ -217,9 +252,13 @@ export class LabStation extends Station {
     u.uObs.value.set(this.pos[0], this.pos[1], this.pos[2]);
     u.uBeta.value.set(beta[0], beta[1], beta[2]);
     u.uTime.value = this.t; u.uCGrid.value = cg;
-    // Exposure follows the Doppler factor in the direction you are looking, as an eye or camera would adapt.
-    const dLook = g * (1 + v3.dot(beta, fwd));
-    u.uExposure.value = this.autoExposure && u.uBeam.value > 0.5 ? 1.6 / Math.pow(Math.max(dLook, 1), 3.4) : 1.6;
+    // Exposure follows the Doppler factor at the centre of the view, as an eye or camera would adapt.
+    // fwd is a direction in the ship's frame, so use the ship-frame form D = 1 / (gamma (1 - beta . n')).
+    const dLook = 1 / (g * (1 - v3.dot(beta, fwd)));
+    // Adapt both ways, so looking back into the dimmed, redshifted view brightens it too (gain capped at 300).
+    const target = this.autoExposure && u.uBeam.value > 0.5 ? 1.6 / Math.min(Math.max(Math.pow(dLook, 3.4), 1 / 300), 1e6) : 1.6;
+    // Ease toward the target over about a third of a second, like an eye adapting.
+    u.uExposure.value += (target - u.uExposure.value) * Math.min(1, dt * 3);
     this.camera.position.set(this.pos[0], this.pos[1], this.pos[2]);
     this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
     this.camera.updateProjectionMatrix();
@@ -227,7 +266,7 @@ export class LabStation extends Station {
     // Timed run bookkeeping.
     const run = this.run;
     if (run.active) {
-      if (this.pos[0] - run.startX >= run.distance) { run.active = false; run.result = 'arrived'; ctx.toast('Arrived with lifetime to spare'); }
+      if (this.odoX - run.startX >= run.distance) { run.active = false; run.result = 'arrived'; ctx.toast('Arrived with lifetime to spare'); }
       else if (this.tau - run.tau0 >= run.lifetime) { run.active = false; run.result = 'decayed'; ctx.toast('The particle decayed before arrival'); }
     }
   }
@@ -248,16 +287,16 @@ export class LabStation extends Station {
     ro.set('t − τ', duration(this.t - this.tau), this.t - this.tau > 0.5 ? 'warm' : '');
     ro.set('Grid cell', length(cell));
     ro.set('Light per cell', duration(1 / cg));
-    this.warn.textContent = cg > 500
+    this.warn.textContent = cg > 30
       ? `Light crosses ${num(cg, 2)} cells a second here, so nothing relativistic will show. Slow light with a preset below, or scroll out to a larger grid.`
       : '';
     const run = this.run;
     this.runRo.set('Lifetime left', run.active ? duration(Math.max(run.lifetime - (this.tau - run.tau0), 0)) : '—');
-    this.runRo.set('Distance left', run.active ? `${fixed(Math.max(run.distance - (this.pos[0] - run.startX), 0), 1)} cells` : '—');
+    this.runRo.set('Distance left', run.active ? `${fixed(Math.max(run.distance - (this.odoX - run.startX), 0), 1)} cells` : '—');
     this.runRo.set('Result', run.result || (run.active ? 'running' : '—'), run.result === 'arrived' ? 'good' : run.result === 'decayed' ? 'bad' : '');
 
     // Spacetime diagram in units of cells (x) and cells of light travel (ct).
-    const x = this.pos[0], ct = this.t * cg;
+    const x = this.odoX, ct = this.t * cg;
     this.trail.push({ x, ct });
     if (this.trail.length > 400) this.trail.shift();
     const R = 40;

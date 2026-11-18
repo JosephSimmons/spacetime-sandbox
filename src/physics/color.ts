@@ -104,24 +104,74 @@ export function dopplerShiftRGB(rgb: [number, number, number], D: number): [numb
   return [Math.max(out[0], 0), Math.max(out[1], 0), Math.max(out[2], 0)];
 }
 
-const smooth = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-
 /**
- * Out-of-band light that a shift brings into view. Surfaces are taken to
- * reflect infrared as strongly as their visible luminance and ultraviolet at
- * 35% of it; the band edges sweep through red, green and blue in turn.
+ * Reflectance spectrum reconstructed from an RGB colour: flat at the blue
+ * value below 465 nm, linear through the green value at 550 nm to the red value
+ * at 610 nm, and flat at the red value beyond. A neutral colour therefore has a
+ * flat spectrum, which stays neutral under any Doppler shift.
  */
-export function continuumRGB(D: number): [number, number, number] {
-  const e = 700 / D, f = 400 / D;
-  const edges: [number, number][] = [[570, 680], [490, 600], [410, 500]];
-  return edges.map(([a, b]) => 1 - smooth(a, b, e) + 0.35 * smooth(a, b, f)) as [number, number, number];
+export function reflectance(rgb: [number, number, number], nm: number): number {
+  const [r, g, b] = rgb;
+  if (nm <= 465) return b;
+  if (nm <= 550) return b + ((g - b) * (nm - 465)) / 85;
+  if (nm <= 610) return g + ((r - g) * (nm - 550)) / 60;
+  return r;
 }
 
-/** Doppler-shifted colour of a lit surface: shifted bands plus out-of-band continuum. */
+/** 3x3 map (row-major, rows = output channel) from RGB to the colour seen at Doppler factor D, before normalisation. */
+function rawSurfaceMatrix(D: number): number[][] {
+  const M = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (let k = 0; k < 3; k++) {
+    const basis: [number, number, number] = [0, 0, 0]; basis[k] = 1;
+    let X = 0, Y = 0, Z = 0;
+    // Light seen at wavelength l left the surface at l * D.
+    for (let l = 380; l <= 780; l += 4) { const f = reflectance(basis, l * D); const c = cmf(l); X += f * c[0]; Y += f * c[1]; Z += f * c[2]; }
+    const rgb = xyzToLinearRGB(X, Y, Z);
+    for (let ch = 0; ch < 3; ch++) M[ch][k] = rgb[ch];
+  }
+  return M;
+}
+
+function inv3(A: number[][]): number[][] {
+  const d = A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
+  return [
+    [(A[1][1] * A[2][2] - A[1][2] * A[2][1]) / d, (A[0][2] * A[2][1] - A[0][1] * A[2][2]) / d, (A[0][1] * A[1][2] - A[0][2] * A[1][1]) / d],
+    [(A[1][2] * A[2][0] - A[1][0] * A[2][2]) / d, (A[0][0] * A[2][2] - A[0][2] * A[2][0]) / d, (A[0][2] * A[1][0] - A[0][0] * A[1][2]) / d],
+    [(A[1][0] * A[2][1] - A[1][1] * A[2][0]) / d, (A[0][1] * A[2][0] - A[0][0] * A[2][1]) / d, (A[0][0] * A[1][1] - A[0][1] * A[1][0]) / d],
+  ];
+}
+const mul3 = (A: number[][], B: number[][]) => A.map((row) => [0, 1, 2].map((j) => row[0] * B[0][j] + row[1] * B[1][j] + row[2] * B[2][j]));
+/**
+ * White-balanced map: scaled so a flat spectrum gives (1, 1, 1). A flat
+ * spectrum is unchanged by a shift, so this keeps greys grey at every D.
+ */
+function balancedMatrix(D: number): number[][] {
+  const R = rawSurfaceMatrix(D), W = rawSurfaceMatrix(1).map((row) => row[0] + row[1] + row[2]);
+  return R.map((row, ch) => row.map((v) => v / W[ch]));
+}
+let S1inv: number[][] | null = null;
+
+/** Map from RGB to the colour seen at Doppler factor D, normalised to the identity at D = 1. */
+export function surfaceMatrix(D: number): number[][] {
+  S1inv ??= inv3(balancedMatrix(1));
+  return mul3(balancedMatrix(D), S1inv);
+}
+
+/** Doppler-shifted colour of a lit surface under the smooth-spectrum model. Brightness (beaming) is applied separately. */
 export function dopplerShiftSurface(rgb: [number, number, number], D: number): [number, number, number] {
-  const s = dopplerShiftRGB(rgb, D), c = continuumRGB(D);
-  const lum = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
-  return [s[0] + lum * c[0], s[1] + lum * c[1], s[2] + lum * c[2]];
+  const M = surfaceMatrix(D);
+  return [0, 1, 2].map((ch) => Math.max(M[ch][0] * rgb[0] + M[ch][1] * rgb[1] + M[ch][2] * rgb[2], 0)) as [number, number, number];
+}
+
+/** Lookup texture data for surfaceMatrix over log10 D in [-SURF_LOGD, SURF_LOGD]: n columns, 3 rows (one per output channel). */
+export const SURF_LOGD = 1.6;
+export function surfaceTable(n = 256): Float32Array {
+  const out = new Float32Array(n * 3 * 4);
+  for (let i = 0; i < n; i++) {
+    const M = surfaceMatrix(Math.pow(10, -SURF_LOGD + (2 * SURF_LOGD * i) / (n - 1)));
+    for (let ch = 0; ch < 3; ch++) out.set([M[ch][0], M[ch][1], M[ch][2], 1], 4 * (ch * n + i));
+  }
+  return out;
 }
 
 /** Inverse of the band matrix, column-major, for the GLSL implementation. */

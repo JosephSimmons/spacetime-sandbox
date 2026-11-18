@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as R from '../src/physics/relativity';
 import { v3, Vec3 } from '../src/physics/constants';
-import { blackbodyRGB, dopplerShiftRGB, dopplerShiftSurface, continuumRGB } from '../src/physics/color';
+import { blackbodyRGB, dopplerShiftRGB, dopplerShiftSurface } from '../src/physics/color';
 
 describe('special relativity', () => {
   it('gamma and rapidity', () => {
@@ -100,17 +100,22 @@ describe('colour', () => {
     const gone = dopplerShiftRGB([0, 0, 1], 2.5);
     expect(gone[0] + gone[1] + gone[2]).toBeLessThan(0.02);
   });
-  it('surface model is the identity at D = 1 and brings infrared into view when blueshifted', () => {
-    expect(continuumRGB(1)).toEqual([0, 0, 0]);
+  it('surface model: identity at rest, neutral stays neutral, hues move the right way', () => {
     const c: [number, number, number] = [0.5, 0.4, 0.3];
     const same = dopplerShiftSurface(c, 1);
-    for (let i = 0; i < 3; i++) expect(same[i]).toBeCloseTo(c[i], 10);
-    // Mild blueshift: infrared arrives in red first.
-    const mild = continuumRGB(1.15);
-    expect(mild[0]).toBeGreaterThan(mild[2]);
-    // Strong blueshift: the whole visible band is filled by former infrared.
-    expect(continuumRGB(4)).toEqual([1, 1, 1]);
-    // Strong redshift: former ultraviolet, dimmer.
-    for (const v of continuumRGB(0.3)) expect(v).toBeCloseTo(0.35, 10);
+    for (let i = 0; i < 3; i++) expect(same[i]).toBeCloseTo(c[i], 9);
+    for (const D of [0.2, 0.6, 1.3, 2.5, 6]) {
+      const g = dopplerShiftSurface([0.5, 0.5, 0.5], D);
+      for (let i = 0; i < 3; i++) expect(g[i]).toBeCloseTo(0.5, 6);
+    }
+    // Blueshift a red surface: its long-wavelength light moves into green, so it turns yellower.
+    const red = dopplerShiftSurface([1, 0, 0], 1.25);
+    expect(red[1]).toBeGreaterThan(0.3);
+    // Blueshift a blue surface: its light moves into the ultraviolet, so it darkens.
+    const blue = dopplerShiftSurface([0, 0, 1], 1.4);
+    expect(blue[0] + blue[1] + blue[2]).toBeLessThan(0.35);
+    // Redshift a blue surface: its light moves toward green and red.
+    const bR = dopplerShiftSurface([0, 0, 1], 0.75);
+    expect(bR[1]).toBeGreaterThan(0.3);
   });
 });

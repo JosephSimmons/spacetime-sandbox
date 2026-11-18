@@ -4,7 +4,7 @@
  * and every fragment is Doppler-shifted and beamed by its own Doppler factor.
  */
 import * as THREE from 'three';
-import { bandInverseMatrix, blackbodyRGB, blackbodyLuminance } from '../physics/color';
+import { bandInverseMatrix, blackbodyRGB, blackbodyLuminance, surfaceTable, SURF_LOGD } from '../physics/color';
 
 /** GLSL: CIE colour-matching fit, band-model Doppler shift, tone mapping. */
 export const COLOR_GLSL = /* glsl */ `
@@ -24,17 +24,12 @@ vec3 dopplerShift(vec3 rgb, float D){
   vec3 w = uBandInv * rgb;
   return max(w.x * xyz2rgb(cmf(610.0 / D)) + w.y * xyz2rgb(cmf(550.0 / D)) + w.z * xyz2rgb(cmf(465.0 / D)), 0.0);
 }
-// Light from outside the visible band that the shift brings into view: surfaces
-// are taken to reflect infrared as strongly as their visible luminance, and
-// ultraviolet at 35% of it.
-vec3 continuum(float D){
-  float e = 700.0 / D, f = 400.0 / D;
-  vec3 ir = 1.0 - vec3(smoothstep(570.0, 680.0, e), smoothstep(490.0, 600.0, e), smoothstep(410.0, 500.0, e));
-  vec3 uv = vec3(smoothstep(570.0, 680.0, f), smoothstep(490.0, 600.0, f), smoothstep(410.0, 500.0, f));
-  return ir + 0.35 * uv;
-}
+// Smooth-spectrum surface model (physics/color.surfaceMatrix), read from a lookup texture.
+uniform sampler2D uSurf;
 vec3 dopplerSurface(vec3 rgb, float D){
-  return dopplerShift(rgb, D) + dot(rgb, vec3(0.2126, 0.7152, 0.0722)) * continuum(D);
+  float u = clamp((log(D) / 2.302585 + ${SURF_LOGD.toFixed(2)}) / ${(2 * SURF_LOGD).toFixed(2)}, 0.0, 1.0) * (255.0 / 256.0) + 0.5 / 256.0;
+  vec3 r0 = texture2D(uSurf, vec2(u, 1.0 / 6.0)).rgb, r1 = texture2D(uSurf, vec2(u, 0.5)).rgb, r2 = texture2D(uSurf, vec2(u, 5.0 / 6.0)).rgb;
+  return max(vec3(dot(r0, rgb), dot(r1, rgb), dot(r2, rgb)), 0.0);
 }
 vec3 toneMap(vec3 c, float exposure){ c = 1.0 - exp(-c * exposure); return pow(c, vec3(1.0 / 2.2)); }
 `;
@@ -63,7 +58,19 @@ export interface RelUniforms {
   uMono: { value: number }; uMonoNm: { value: number };
   uTime: { value: number }; uCGrid: { value: number };
   uPeriod: { value: THREE.Vector3 }; uFog: { value: number }; uBg: { value: THREE.Color };
-  uBandInv: { value: THREE.Matrix3 }; uExposure: { value: number }; uSun: { value: THREE.Vector3 };
+  uBandInv: { value: THREE.Matrix3 }; uExposure: { value: number }; uSun: { value: THREE.Vector3 }; uSurf: { value: THREE.DataTexture };
+}
+
+let surfTex: THREE.DataTexture | null = null;
+function surfaceTexture(): THREE.DataTexture {
+  if (surfTex) return surfTex;
+  const n = 256, f = surfaceTable(n);
+  const data = new Uint16Array(f.length);
+  for (let i = 0; i < f.length; i++) data[i] = THREE.DataUtils.toHalfFloat(f[i]);
+  surfTex = new THREE.DataTexture(data, n, 3, THREE.RGBAFormat, THREE.HalfFloatType);
+  surfTex.minFilter = THREE.LinearFilter; surfTex.magFilter = THREE.LinearFilter;
+  surfTex.wrapS = surfTex.wrapT = THREE.ClampToEdgeWrapping; surfTex.needsUpdate = true;
+  return surfTex;
 }
 
 export function makeRelUniforms(): RelUniforms {
@@ -74,7 +81,7 @@ export function makeRelUniforms(): RelUniforms {
     uMono: { value: 0 }, uMonoNm: { value: 589 },
     uTime: { value: 0 }, uCGrid: { value: 1 },
     uPeriod: { value: new THREE.Vector3() }, uFog: { value: 190 }, uBg: { value: new THREE.Color(0x06080c) },
-    uBandInv: { value: m }, uExposure: { value: 1.6 }, uSun: { value: new THREE.Vector3(0.4, 0.8, 0.45).normalize() },
+    uBandInv: { value: m }, uSurf: { value: surfaceTexture() }, uExposure: { value: 1.6 }, uSun: { value: new THREE.Vector3(0.4, 0.8, 0.45).normalize() },
   };
 }
 

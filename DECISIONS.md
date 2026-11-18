@@ -27,15 +27,25 @@ Calls made during the build, so they can be reviewed or overturned. Newest last.
   functions. Real surfaces have broad spectra, so this is a model of the effect,
   not a spectral renderer. Blackbody sources (stars, the accretion disc) are
   exact: a Doppler-shifted blackbody is a blackbody at temperature D·T.
-- **Out-of-band light.** A pure three-band model goes black once the bands
-  shift out of the visible, which real scenes do not: infrared shifts in to
-  replace them. Surfaces are therefore given an infrared reflectance equal to
-  their visible luminance and an ultraviolet one at 35% of it. The "sodium-lamp
-  world" toggle removes all of this and lights the scene with a single 589 nm
-  line, where the colour shift is exact.
-- **Auto exposure** in the lab scales exposure by the Doppler factor in the
-  direction you are looking, as an adapting eye or camera would. Turn it off to
-  see the raw D⁴ beaming.
+- **Surface colour under Doppler shift.** Each surface's RGB colour is turned
+  into a smooth reflectance spectrum: flat at its blue value below 465 nm,
+  linear through green at 550 nm to red at 610 nm, and flat at its red value
+  beyond, out into the infrared. The shifted spectrum is projected back through
+  the CIE functions and normalised so nothing changes at rest. Neutral greys
+  have flat spectra and stay grey at any speed; coloured surfaces change hue
+  (red turns yellow, blue darkens into the ultraviolet when blueshifted).
+  Real reflectance spectra differ, and the illuminant is not shifted, so this is
+  a model of the effect. The "sodium-lamp world" toggle lights the scene with a
+  single 589 nm line, where the shift is exact.
+- **Auto exposure** in the lab scales exposure by the Doppler factor at the
+  centre of the view (computed in the ship's frame), in both directions and
+  eased over about a third of a second, as an adapting eye or camera would.
+  Turn it off to see the raw D⁴ beaming.
+- **Lab flight.** Matched thrust is capped at 15 cells/s², so at the real speed
+  of light the ship moves at ordinary speeds rather than racing down the track.
+  Turning c down mid-flight caps the ship at 0.5 of the new c. Cruise control
+  holds a chosen fraction of c along the track. The observer's position is
+  wrapped into one period of the lattice to keep shader coordinates small.
 - **Beaming** scales bolometric intensity as D⁴.
 - **The player's proper time drives the simulation.** World time advances by
   γ dτ, so time dilation is something you experience, not just a readout.

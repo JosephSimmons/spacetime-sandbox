@@ -61,9 +61,11 @@ export class App {
   private resize() {
     const w = window.innerWidth, h = window.innerHeight;
     this.ctx.renderer.setSize(w, h, false);
-    const wide = w > 1000;
-    const lx = wide ? 300 : 0, rx = wide ? 340 : 0;
+    // Wide: both panels. Medium: instruments only. Narrow: the view alone.
+    const wide = w > 1100, medium = w > 760;
+    const lx = wide ? 300 : 0, rx = medium ? 340 : 0;
     $('left').style.display = wide ? '' : 'none';
+    $('right').style.display = medium ? '' : 'none';
     this.ctx.view = { x: lx, y: 44, w: Math.max(w - lx - rx, 50), h: Math.max(h - 44 - 86, 50) };
   }
 
